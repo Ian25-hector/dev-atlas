@@ -7,7 +7,7 @@ import { logout } from "../auth/actions";
 async function AccountPanel() {
   const token = (await cookies()).get(sessionCookie)?.value;
   const user = token ? await getSessionUser(token) : null;
-  if (!user) redirect("/login");
+  if (!user) return redirect("/login");
 
   return (
     <>

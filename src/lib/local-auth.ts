@@ -1,7 +1,6 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { promisify } from "node:util";
 
 type User = { name: string; email: string };
 type Account = User & { salt: string; passwordHash: string };
@@ -12,7 +11,15 @@ export const sessionCookie = "dev-atlas-session";
 const dataDir = join(process.cwd(), ".dev-atlas-auth");
 const accountsDir = join(dataDir, "accounts");
 const sessionsDir = join(dataDir, "sessions");
-const deriveKey = promisify(scrypt);
+
+function deriveKey(password: string, salt: string) {
+  return new Promise<Buffer>((resolve, reject) => {
+    scrypt(password, salt, 64, (error, key) => {
+      if (error) reject(error);
+      else resolve(key);
+    });
+  });
+}
 
 function hash(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -29,7 +36,7 @@ async function readJson<T>(path: string): Promise<T | null> {
 
 export async function createAccount(user: User, password: string) {
   const salt = randomBytes(16).toString("hex");
-  const passwordHash = (await deriveKey(password, salt, 64)).toString("hex");
+  const passwordHash = (await deriveKey(password, salt)).toString("hex");
   const account: Account = { ...user, salt, passwordHash };
   await mkdir(accountsDir, { recursive: true, mode: 0o700 });
 
@@ -54,7 +61,7 @@ export async function createAccount(user: User, password: string) {
 
 export async function verifyAccount(email: string, password: string): Promise<User | null> {
   const account = await readJson<Account>(join(accountsDir, `${hash(email)}.json`));
-  const key = await deriveKey(password, account?.salt ?? "unknown-account", 64);
+  const key = await deriveKey(password, account?.salt ?? "unknown-account");
   if (!account || !timingSafeEqual(key, Buffer.from(account.passwordHash, "hex"))) {
     return null;
   }

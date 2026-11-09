@@ -15,7 +15,7 @@ function field(form: FormData, name: string) {
   return typeof value === "string" ? value : "";
 }
 
-export async function register(_previousError: string, form: FormData) {
+export async function register(_previousError: string, form: FormData): Promise<string> {
   const name = field(form, "nombre").trim();
   const email = field(form, "email").trim().toLowerCase();
   const password = field(form, "password");
@@ -41,10 +41,10 @@ export async function register(_previousError: string, form: FormData) {
     return "No se pudo crear la cuenta. Inténtalo de nuevo.";
   }
 
-  redirect("/login");
+  return redirect("/login");
 }
 
-export async function login(_previousError: string, form: FormData) {
+export async function login(_previousError: string, form: FormData): Promise<string> {
   const email = field(form, "email").trim().toLowerCase();
   const password = field(form, "password");
   const invalidCredentials = "Correo o contraseña incorrectos.";
@@ -73,7 +73,7 @@ export async function login(_previousError: string, form: FormData) {
     return "No se pudo iniciar sesión. Inténtalo de nuevo.";
   }
 
-  redirect("/dashboard");
+  return redirect("/dashboard");
 }
 
 export async function logout() {
