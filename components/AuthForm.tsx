@@ -1,22 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { firebaseAuth } from "@/lib/firebaseConfig";
-import {
-  browserLocalPersistence,
-  browserSessionPersistence,
-  createUserWithEmailAndPassword,
-  setPersistence,
-  signInWithEmailAndPassword,
-  updateProfile,
-} from "firebase/auth";
+import { useActionState, useState } from "react";
+import { login, register } from "@/app/auth/actions";
 
 type AuthFormProps = { mode: "login" | "signup" };
 
 export default function AuthForm({ mode }: AuthFormProps) {
-  const router = useRouter();
   const esRegistro = mode === "signup";
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -24,57 +14,15 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, submit, isSubmitting] = useActionState(esRegistro ? register : login, "");
 
   const labelClass =
     "block font-label-ui text-label-ui text-on-surface-variant font-medium";
   const inputClass =
     "w-full pl-10 pr-3.5 py-2.5 bg-surface-container-lowest border border-outline-variant/50 rounded-lg text-on-surface placeholder-outline font-code-inline text-code-inline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors";
 
-  async function sendForm(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (isSubmitting) return;
-
-    setError("");
-    if (esRegistro && password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      if (esRegistro) {
-        const resultado = await createUserWithEmailAndPassword(
-          firebaseAuth,
-          email.trim(),
-          password,
-        );
-        await updateProfile(resultado.user, {
-          displayName: name.trim(),
-        });
-      } else {
-        const remember = new FormData(event.currentTarget).has("remember");
-        await setPersistence(
-          firebaseAuth,
-          remember ? browserLocalPersistence : browserSessionPersistence,
-        );
-        await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
-        router.replace("/dashboard");
-        return;
-      }
-    } catch {
-      setError(
-        esRegistro
-          ? "No se pudo crear la cuenta. Revisa los datos o el correo."
-          : "No se pudo iniciar sesión. Revisa tus credenciales e inténtalo de nuevo.",
-      );
-    }
-    setIsSubmitting(false);
-  }
-
   return (
-    <form className="space-y-4" onSubmit={sendForm}>
+    <form className="space-y-4" action={submit}>
       {esRegistro && (
         <div className="space-y-1.5">
           <label htmlFor="nombre" className={labelClass}>
@@ -92,6 +40,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               name="nombre"
               type="text"
               autoComplete="name"
+              maxLength={100}
               required
               placeholder="Tu nombre completo"
               className={inputClass}
@@ -116,6 +65,8 @@ export default function AuthForm({ mode }: AuthFormProps) {
             placeholder="alex.dev@empresa.io"
             required
             type="email"
+            autoComplete="email"
+            maxLength={254}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -149,6 +100,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
             placeholder="••••••••••••"
             required
             type={showPassword ? "text" : "password"}
+            autoComplete={esRegistro ? "new-password" : "current-password"}
+            minLength={esRegistro ? 6 : undefined}
+            maxLength={128}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -168,7 +122,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           <div className="flex items-center justify-between">
             <label
               className="block font-label-ui text-label-ui text-on-surface-variant font-medium"
-              htmlFor="password"
+              htmlFor="confirmPassword"
             >
               Confirmar contraseña
             </label>
@@ -181,11 +135,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
               className="w-full pl-10 pr-10 py-2.5 bg-surface-container-lowest border border-outline-variant/50 
                       rounded-lg text-on-surface placeholder-outline font-code-inline text-code-inline focus:outline-none 
                       focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
-              id="password"
-              name="password"
+              id="confirmPassword"
+              name="confirmPassword"
               placeholder="••••••••••••"
               required
               type={showConfirmPassword ? "text" : "password"}
+              autoComplete="new-password"
+              maxLength={128}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
